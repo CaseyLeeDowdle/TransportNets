@@ -12,6 +12,8 @@ class NVP(tf.keras.models.Model):
         self.output_dim = output_dim
         self.bn_trainable_vars_gamma = []
         self.bn_trainable_vars_beta = []
+        self.loss_fns = dict({'nll' : self.negative_log_likelihood})
+        self.loss_fn_names = dict({self.negative_log_likelihood : 'Negative Log Likelihood'})
 
         # s() and t()
         self.shift_and_log_scale_fn = num_layers*[None]
@@ -65,19 +67,23 @@ class NVP(tf.keras.models.Model):
             if bij.name == 'batch_normalization':
                 self.bijector_chain.bijectors[i].batchnorm.trainable = training
 
-    def compile(self, optimizer):
+    def compile(self, optimizer, loss_fn_name = 'nll'):
         super(NVP, self).compile()
         self.optimizer = optimizer
+        self.loss_fn = self.loss_fns[loss_fn_name]
 
     @tf.function
     def train_step(self, x):
         # x is input from target distribution
         with tf.GradientTape() as tape:
             tape.watch(x)
-            loss = -tf.reduce_mean(self.flow.log_prob(x))
+            loss = self.loss_fn(x)
         gradients = tape.gradient(loss, self.trainable_variables)
         del tape
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
         #loss_tracker.update_state(loss)
-        return {"negative likelihood": loss}
+        return {self.loss_fn_names[self.loss_fn] : loss}
+
+    def negative_log_likelihood(self, input):
+        return -tf.reduce_mean(self.flow.log_prob(input))
