@@ -60,6 +60,9 @@ class NVP(tf.keras.models.Model):
     @tf.function
     def transformed_log_prob(self, log_prob, x):
         return (self.bijector_chain.inverse_log_det_jacobian(x, event_ndims=self.output_dim) + log_prob(self.bijector_chain.inverse(x)))
+    @tf.function
+    def log_prob(self, x):
+        return self.flow.log_prob(x)
 
     def batch_norm_mode(self,training):
         #training is bool
@@ -81,9 +84,11 @@ class NVP(tf.keras.models.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         del tape
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.add_metric(-tf.reduce_mean(self.flow.log_prob(x)), aggregation = 'mean', name="test")
 
         #loss_tracker.update_state(loss)
         return {self.loss_fn_names[self.loss_fn] : loss}
 
+    @tf.function
     def negative_log_likelihood(self, input):
         return -tf.reduce_mean(self.flow.log_prob(input))
