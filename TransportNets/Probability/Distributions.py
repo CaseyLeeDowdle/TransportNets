@@ -94,11 +94,11 @@ class MixtureDistribution(Distribution):
 
 
 
-def RotatedBanana(N,angle,a1=1.0,a2=0.5,a3=0.1):
+def RotatedBanana(N,angle,a1=1.0,a2=0.5,a3=0.1,start_height=0):
     angle = np.radians(angle)
     r = tf.random.normal([N,2],mean=0.0,stddev=1.0)
     x1 = a1*r[:,:1]
     x2 = a2*r[:,:1]**2 + a3*r[:,1:2]
     x1Rot = np.cos(angle)*x1 - np.sin(angle)*x2
     x2Rot = np.sin(angle)*x1 + np.cos(angle)*x2
-    return tf.concat([x1Rot,x2Rot],axis=1)
+    return tf.concat([x1Rot,x2Rot + start_height],axis=1)
