@@ -5,7 +5,7 @@ tfb = tfp.bijectors
 
 class NVP(tf.keras.models.Model):
 
-    def __init__(self,num_masked=1,output_dim=2,num_layers=4,neuron_list=[200,200]):
+    def __init__(self,num_masked=1,output_dim=2,num_layers=4,neuron_list=[200,200], ref_dist = None):
         super(NVP, self).__init__(name='NVP')
 
         # member variables
@@ -28,9 +28,8 @@ class NVP(tf.keras.models.Model):
             bijectors.append(tfb.RealNVP(num_masked = num_masked, shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
             if (i < (num_layers - 1)):
                 bijectors.append(tfb.Permute(permutation=[1,0]))
-                # append these guys
-
                 bn_bijector = tfb.BatchNormalization()
+
                 # need to do a forard pass to initialize training variables
                 _ = bn_bijector(tf.random.normal([1,output_dim]))
                 self.bn_trainable_vars_gamma.append(bn_bijector.trainable_variables[0])
@@ -41,7 +40,11 @@ class NVP(tf.keras.models.Model):
         self.bijector_chain = tfb.Chain(bijectors=list(reversed(bijectors)))
 
         # Make flow
-        self.ref_dist = tfd.MultivariateNormalDiag(loc=tf.zeros([output_dim],tf.float32))
+        if (ref_dist == None):
+            self.ref_dist = tfd.MultivariateNormalDiag(loc=tf.zeros([output_dim],tf.float32))
+        else:
+            self.ref_dist = ref_dist
+
         self.flow = tfd.TransformedDistribution(
             distribution=self.ref_dist,
             bijector=self.bijector_chain,
@@ -63,6 +66,9 @@ class NVP(tf.keras.models.Model):
     @tf.function
     def log_prob(self, x):
         return self.flow.log_prob(x)
+    @tf.function
+    def prob(self, x):
+        return self.flow.prob(x)
 
     def batch_norm_mode(self,training):
         #training is bool
