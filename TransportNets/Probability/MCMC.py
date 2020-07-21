@@ -56,10 +56,10 @@ class RTO_MH:
         self.joint_sample = self.model(latent_vector)
         self.y = self.joint_sample[:,(self.n-self.m):]
 
-        if (self.S != None):
+        if (self.S == None):
             self.S = tf.eye(self.m)
         else:
-            assert S.shape[0] == S.shape[1]
+            assert self.S.shape[0] == self.S.shape[1]
 
         self.S_obs_inv_transpose  = tf.transpose(tf.linalg.inv(self.S))
 
