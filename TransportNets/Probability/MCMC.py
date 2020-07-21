@@ -42,7 +42,7 @@ class RTO_MH:
     # m = dim of observations
     # n_samples is the number of samples to draw
     # S = covariance matrix for observations, must be square
-    def __init__(self, model, n, m, n_samples, S = None):
+    def __init__(self, model, n, m, n_samples, obs_noise_scalar = None, S = None):
 
         self.n_samples = n_samples
         self.model = model
@@ -57,7 +57,8 @@ class RTO_MH:
         self.y = self.joint_sample[:,(self.n-self.m):]
 
         if (self.S == None):
-            self.S = tf.eye(self.m)
+            assert obs_noise_scalar != None
+            self.S = obs_noise_scalar*tf.eye(self.m)
         else:
             assert self.S.shape[0] == self.S.shape[1]
 
