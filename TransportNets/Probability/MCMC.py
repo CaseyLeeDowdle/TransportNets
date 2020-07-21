@@ -41,19 +41,27 @@ class RTO_MH:
     # n =  dim of params
     # m = dim of observations
     # n_samples is the number of samples to draw
-    def __init__(self, model, n, m, n_samples):
+    # S = covariance matrix for observations, must be square
+    def __init__(self, model, n, m, n_samples, S = None):
 
         self.n_samples = n_samples
         self.model = model
         self.m = m
         self.n = n
+        self.S = S
+        self.compile();
 
     def compile(self):
         latent_vector = tf.random.normal([1,self.n],mean=0.0,stddev=1.0,dtype=tf.float32)
-        joint_sample = self.model(latent_vector)
-        self.y = joint_sample[:,(self.n-self.m):]
+        self.joint_sample = self.model(latent_vector)
+        self.y = self.joint_sample[:,(self.n-self.m):]
 
-        self.S_obs_inv = tf.transpose(tf.linalg.inv(tf.linalg.diag([0.01,0.01,0.01,0.1,0.1,0.1])))
+        if (S != None):
+            self.S = tf.eye(self.m)
+        else:
+            assert S.shape[0] == S.shape[1]
+
+        self.S_obs_inv_transpose  = tf.transpose(tf.linalg.inv(self.S))
 
         vi = tf.random.normal([1,self.n],stddev=0.1)
         opt_results = tfp.optimizer.bfgs_minimize(
@@ -75,24 +83,24 @@ class RTO_MH:
 
 
     def run(self):
-        n_acc = 0
+        self.n_acc = 0
         for i in range(1, self.n_samples):
             t = tf.random.uniform(shape=[1])
             v = tf.reshape(tf.constant(self.v_samps[i-1,:],dtype=tf.float32),[1,self.n])
             if t < self.w_v_prop[i]/self.w(v):
                 self.v_samps[i,:] = self.v_prop[i,:].numpy()
-                n_acc += 1
+                self.n_acc += 1
             else:
                 self.v_samps[i,:] = self.v_samps[i-1,:]
 
-        print('Acceptance Rate:', n_acc/self.n_samples)
-        return n_acc, self.model(self.v_samps)
+        print('Acceptance Rate:', self.n_acc/self.n_samples)
+        return self.n_acc, self.model(self.v_samps)
 
 
     @tf.function
     def G(self, v):
         # defining matrix operations reverse of actual equation in order to allow for batch ops
-        return (self.model(v)[:,(self.n-self.m):]-self.y)@self.S_obs_inv
+        return (self.model(v)[:,(self.n-self.m):]-self.y)@self.S_obs_inv_transpose
     @tf.function
     def H(self, v):
         return tf.concat([v,self.G(v)],-1)

@@ -63,7 +63,7 @@ class NVP(tf.keras.models.Model):
     def inverse(self, inputs):
         return self.bijector_chain.inverse(inputs)
     @tf.function
-    def getFlow(self, num_samples):
+    def sample(self, num_samples):
         return self.flow.sample(num_samples)
     @tf.function
     def transformed_log_prob(self, log_prob, x):
