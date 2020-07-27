@@ -37,19 +37,18 @@ def MH2d(model, y_star = 0.0, niters=10000,b=2,init_val=0.0):
     return acceptance_rate, samples
 
 class RTO_MH:
+
     # try for a single sample m ~ p(m|y)
     # n =  dim of params
     # m = dim of observations
     # n_samples is the number of samples to draw
     # S = covariance matrix for observations, must be square
-    def __init__(self, model, n, m, n_samples, obs_noise_scalar = None, S = None):
 
-        self.n_samples = n_samples
+    def __init__(self, model, n, m):
+
         self.model = model
         self.m = m
         self.n = n
-        self.S = S
-        self.compile();
 
     def compile(self):
         latent_vector = tf.random.normal([1,self.n],mean=0.0,stddev=1.0,dtype=tf.float32)
@@ -80,10 +79,15 @@ class RTO_MH:
 
         self.w_v_prop = self.w(self.v_prop)
         self.v_samps = np.zeros([self.n_samples,self.n])
-        self.v_samps[0,:] = v_ref
+        self.v_samps[0,:] = v_ref.numpy()
 
 
-    def run(self):
+    def run(self, n_samples, S = None, obs_noise_scalar = None):
+        run_time = time.time()
+        self.n_samples = n_samples;
+        self.S = S;
+
+        self.compile(); #in the RTO paper this is the part that can be run in parallel
         self.n_acc = 0
         for i in range(1, self.n_samples):
             t = tf.random.uniform(shape=[1])
@@ -93,8 +97,10 @@ class RTO_MH:
                 self.n_acc += 1
             else:
                 self.v_samps[i,:] = self.v_samps[i-1,:]
+        self.run_time = time.time() - run_time
 
-        print('Acceptance Rate:', self.n_acc/self.n_samples)
+        print('Acceptance Rate: ', self.n_acc/self.n_samples)
+        print('Run time: ', self.run_time)
         return self.n_acc, self.model(self.v_samps)
 
 
