@@ -5,7 +5,7 @@ tfb = tfp.bijectors
 
 class NVP(tf.keras.models.Model):
 
-    def __init__(self,num_masked=1,output_dim=2,num_layers=4,neuron_list=[200,200], ref_dist = None):
+    def __init__(self,num_masked=1,output_dim=2,num_layers=4,neuron_list=[200,200], ref_dist = None, permutations=None):
         super(NVP, self).__init__(name='NVP')
 
         # member variables
@@ -27,7 +27,12 @@ class NVP(tf.keras.models.Model):
 
             bijectors.append(tfb.RealNVP(num_masked = num_masked, shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
             if (i < (num_layers - 1)):
-                bijectors.append(tfb.Permute(permutation=[1,0]))
+                
+                if(permutations is None):
+                    bijectors.append(tfb.Permute(permutation=[1,0]))
+                else:
+                    bijectors.append(tfb.Permute(permutation=permutations[i]))
+                    
                 bn_bijector = tfb.BatchNormalization()
 
                 # need to do a forard pass to initialize training variables
