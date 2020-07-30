@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
+import numpy as np
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
@@ -27,14 +28,20 @@ class NVP(tf.keras.models.Model):
 
             bijectors.append(tfb.RealNVP(num_masked = num_masked, shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
             if (i < (num_layers - 1)):
-                bijectors.append(tfb.Permute(permutation=[1,0]))
-                bn_bijector = tfb.BatchNormalization()
 
+                # random permutation each layer
+                perm_list = tf.random.shuffle(np.arange(0,output_dim))
+                perm_list = tf.cast(perm_list,tf.int32)
+                bijectors.append(tfb.Permute(permutation=perm_list))
+
+                # batch norm
+                bn_bijector = tfb.BatchNormalization()
                 # need to do a forard pass to initialize training variables
                 _ = bn_bijector(tf.random.normal([1,output_dim]))
                 self.bn_trainable_vars_gamma.append(bn_bijector.trainable_variables[0])
                 self.bn_trainable_vars_beta.append(bn_bijector.trainable_variables[1])
                 bijectors.append(bn_bijector)
+
 
         # Chain layers together
         self.bijector_chain = tfb.Chain(bijectors=list(reversed(bijectors)))
