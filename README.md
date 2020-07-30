@@ -14,4 +14,4 @@ The recommended way to run TransportNets is to first install a docker container 
 ```docker run -it -v ~/<transportnets_folder>:/local -p 8888:8888 tensorflow/tensorflow:latest-jupyter bash```
 where `<transportnets_folder>` is the directory where this repository is located on your host machine.
 
-3. Then `cd local/` to access the contents of this repository. From there, you can run a jupyter notebook using `jupyter notebook --ip=*`, which will be accessible on port 8888 of your host machine.
+3. Then `cd ~/<transportnets_folder>/` to access the contents of this repository. From there, you can run a jupyter notebook using `jupyter notebook --ip=*`, which will be accessible on port 8888 of your host machine.
