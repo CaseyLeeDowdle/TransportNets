@@ -1,6 +1,6 @@
 # TransportNets
 
-TransportNets is complicated programming.
+TransportNets is complicated.
 
 ## Installation
 
