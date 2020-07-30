@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
+import numpy as np
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
@@ -27,7 +28,7 @@ class NVP(tf.keras.models.Model):
 
             bijectors.append(tfb.RealNVP(num_masked = num_masked, shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
             if (i < (num_layers - 1)):
-                
+
                 # random permutation each layer
                 perm_list = tf.random.shuffle(np.arange(0,output_dim))
                 perm_list = tf.cast(perm_list,tf.int32)
