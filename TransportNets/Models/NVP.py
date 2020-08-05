@@ -6,11 +6,15 @@ tfb = tfp.bijectors
 
 class NVP(tf.keras.models.Model):
 
-    def __init__(self,num_masked=1,output_dim=2,num_layers=4,neuron_list=[200,200], ref_dist = None):
+    def __init__(self,num_masked=1,output_dim=2,
+                 num_layers=4,neuron_list=[200,200],
+                 masks = None, permutations = None, ref_dist = None,):
         super(NVP, self).__init__(name='NVP')
 
         # member variables
         self.output_dim = output_dim
+        self.masks = masks
+        self.permutations = permutations 
         self.bn_trainable_vars_gamma = []
         self.bn_trainable_vars_beta = []
         self.loss_fns = dict({'nll' : self.negative_log_likelihood})
@@ -25,14 +29,25 @@ class NVP(tf.keras.models.Model):
         bijectors = []
         # for floweach layer containing bijector, batch_norm, and permutation
         for i in range(num_layers):
-
-            bijectors.append(tfb.RealNVP(num_masked = num_masked, shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
-            if (i < (num_layers - 1)):
-
-                # random permutation each layer
-                perm_list = tf.random.shuffle(np.arange(0,output_dim))
-                perm_list = tf.cast(perm_list,tf.int32)
-                bijectors.append(tfb.Permute(permutation=perm_list))
+            # default to fixed mask length defined by num_masked
+            if self.masks == None:
+                bijectors.append(tfb.RealNVP(num_masked = num_masked, 
+                                 shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
+            else:
+                assert len(self.masks) == num_layers
+                # custom mask length 
+                bijectors.append(tfb.RealNVP(num_masked = self.masks[i], 
+                                 shift_and_log_scale_fn = self.shift_and_log_scale_fn[i]))
+            if i < (num_layers - 1):
+                if self.permutations == None:
+                    # default to random permutation each layer
+                    perm_list = tf.random.shuffle(np.arange(0,output_dim))
+                    perm_list = tf.cast(perm_list,tf.int32)
+                    bijectors.append(tfb.Permute(permutation=perm_list))
+                else:
+                    assert len(self.permutations) >= num_layers - 1
+                    # else append custom permutation from list
+                    bijectors.append(tfb.Permute(permutation=self.permutations[i]))
 
                 # batch norm
                 bn_bijector = tfb.BatchNormalization()
@@ -65,17 +80,22 @@ class NVP(tf.keras.models.Model):
     def inverse(self, inputs):
         return self.bijector_chain.inverse(inputs)
     @tf.function
-    def getFlow(self, num_samples):
+    def sample(self, num_samples):
         return self.flow.sample(num_samples)
     @tf.function
     def transformed_log_prob(self, log_prob, x):
-        return (self.bijector_chain.inverse_log_det_jacobian(x, event_ndims=self.output_dim) + log_prob(self.bijector_chain.inverse(x)))
+        return (self.bijector_chain.inverse_log_det_jacobian(x, event_ndims=self.output_dim) 
+                    + log_prob(self.bijector_chain.inverse(x)))
     @tf.function
     def log_prob(self, x):
         return self.flow.log_prob(x)
     @tf.function
     def prob(self, x):
         return self.flow.prob(x)
+    
+    @tf.function
+    def negative_log_likelihood(self, inputs):
+        return -tf.reduce_mean(self.flow.log_prob(inputs))
 
     def batch_norm_mode(self,training):
         #training is bool
@@ -101,7 +121,3 @@ class NVP(tf.keras.models.Model):
 
         #loss_tracker.update_state(loss)
         return {self.loss_fn_names[self.loss_fn] : loss}
-
-    @tf.function
-    def negative_log_likelihood(self, input):
-        return -tf.reduce_mean(self.flow.log_prob(input))
