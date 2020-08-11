@@ -1,6 +1,6 @@
 # TransportNets
 
-TransportNets is complicated.
+TransportNets is a library built with TensorFlow Probability to easily use generative methods to solve inverse problems. There is a special emphasis on invertible neural networks (INNs). There are many different examples in the form of jupyter notebooks.
 
 ## Installation
 
