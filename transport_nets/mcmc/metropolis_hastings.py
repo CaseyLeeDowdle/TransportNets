@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
-import time
+from tqdm import trange
 
 tfb = tfp.bijectors
 
@@ -30,8 +30,8 @@ def MetropolisHastings(theta,b,niters,log_prob_fn,time_interval=1000):
     samples = tf.TensorArray(tf.float32,size=int(niters+1), dynamic_size=False)
     samples = samples.write(0,theta)
     naccept= 0
-    t0 = time.time()
-    for i in range(1,niters+1):
+    #t0 = time.time()
+    for i in trange(1,niters+1):
         theta_p = theta + tf.random.normal([n_param])*b
         rho = min(1, tf.math.exp(log_prob_fn(theta_p)-log_prob_fn(theta)))
         u = tf.random.uniform([1])
@@ -39,10 +39,10 @@ def MetropolisHastings(theta,b,niters,log_prob_fn,time_interval=1000):
             naccept += 1
             theta = theta_p
         samples = samples.write(i,theta)
-        if i % time_interval == 0:
-            t1 = time.time()
-            print('it:',i,'time:',t1-t0)
-            t0 = t1
+        #if i % time_interval == 0:
+        #    t1 = time.time()
+        #    print('it:',i,'time:',t1-t0)
+        #    t0 = t1
     acceptance_rate = naccept/niters
     
     return acceptance_rate, samples.stack()

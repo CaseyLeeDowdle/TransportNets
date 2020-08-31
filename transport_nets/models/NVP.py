@@ -8,7 +8,7 @@ class NVP(tf.keras.models.Model):
 
     def __init__(self,num_masked=1,output_dim=2,
                  num_layers=4,neuron_list=[200,200],
-                 masks = None, permutations = None, ref_dist = None,):
+                 masks = None, permutations = None, ref_dist = None):
         super(NVP, self).__init__(name='NVP')
 
         # member variables
@@ -112,12 +112,9 @@ class NVP(tf.keras.models.Model):
     def train_step(self, x):
         # x is input from target distribution
         with tf.GradientTape() as tape:
-            tape.watch(x)
             loss = self.loss_fn(x)
         gradients = tape.gradient(loss, self.trainable_variables)
-        del tape
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         self.add_metric(-tf.reduce_mean(self.flow.log_prob(x)), aggregation = 'mean', name="test")
-
         #loss_tracker.update_state(loss)
         return {self.loss_fn_names[self.loss_fn] : loss}
