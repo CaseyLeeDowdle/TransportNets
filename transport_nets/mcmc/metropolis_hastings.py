@@ -43,6 +43,7 @@ def MetropolisHastings(theta,b,niters,log_prob_fn):
     
     return samples.stack().numpy(),acceptance_rate,t1-t0
 
+import numpy as np
 class model_log_prob():
     """Flexible way to create a function that returns the 
     log probability of a model."""
@@ -61,28 +62,42 @@ class model_log_prob():
             before calculating the log probability. Useful if the 
             training data of a model is in different order of the 
             conditional probability you want to sample."""
-        
-        if y_given != None:
-            assert tf.rank(y_given).numpy() == 1
         self.model = model
-        if permute == None:
-            self.permute = tfb.Identity()
+        if type(y_given) == type(None):
+            y_given_bool = False
         else:
-            self.permute = permute
+            y_given_bool = True
+        if type(permute) == type(None):
+            permute_bool = False
+        else:
+            permute_bool = True
             
-        if y_given == None:
+        
+        if not y_given_bool and not permute_bool:
             def log_prob(x):
-                x = self.permute.forward(x)
                 x = tf.reshape(x,[1,-1])
                 return self.model.log_prob(x)
-            self.log_prob = log_prob
-        else:
+        elif y_given_bool and not permute_bool:
+            assert tf.rank(y_given)== 1
             self.y_given = y_given
+            def log_prob(x):
+                xy = tf.reshape(tf.concat([x,self.y_given],axis=-1),shape=[1,-1])
+                return self.model.log_prob(xy)
+        elif permute_bool and not y_given_bool:
+            self.permute = permute
+            def log_prob(x):
+                x = tf.reshape(x,[1,-1])
+                x = self.permute.forward(x)
+                return self.model.log_prob(x)
+        else:
+            assert tf.rank(y_given)== 1
+            self.y_given = y_given
+            self.permute = permute
             def log_prob(x):
                 xy = tf.reshape(tf.concat([x,self.y_given],axis=-1),shape=[1,-1])
                 xy = self.permute.forward(xy)
                 return self.model.log_prob(xy)
-            self.log_prob = log_prob
+        self.log_prob = log_prob
     @tf.function
     def __call__(self,x):
         return self.log_prob(x)
