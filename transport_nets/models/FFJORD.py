@@ -32,23 +32,6 @@ class MLP_ODE(tf.keras.Model):
     def call(self, t, inputs):
         inputs = tf.concat([tf.broadcast_to(t, inputs.shape), inputs], -1)
         return self._model(inputs)  
-    
-class MLP_ODE(tf.keras.Model):
-    
-    def __init__(self,output_dim, neuron_list,  name='mlp_ode'):
-        super(MLP_ODE,self).__init__(name=name)
-        self._neuron_list = neuron_list
-        self._output_dim = output_dim
-        self._modules = []
-        for neurons in self._neuron_list:
-            self._modules.append(layers.Dense(neurons))
-            self._modules.append(layers.Activation('tanh'))
-        self._modules.append(layers.Dense(self._output_dim))
-        self._model = tf.keras.Sequential(self._modules)
-          
-    def call(self, t, inputs):
-        inputs = tf.concat([tf.broadcast_to(t, inputs.shape), inputs], -1)
-        return self._model(inputs)
 
 class FFJORD(tf.keras.Model):
     """Stacked FFJORD bijectors with Gaussian base distribution"""
@@ -120,7 +103,11 @@ class FFJORD(tf.keras.Model):
         super(FFJORD, self).compile()
         self.optimizer = optimizer
         self.loss_fn = self.loss_fns[loss_fn_name]
-
+    
+    # using custom fit function since the train_step function needed 
+    # for keras.model.fit() method would need to reference self.trainable_variables
+    # this creates two sets of identical variables unless its wrapped in a 
+    # tf1.make_template
     def fit_custom(self,dataset,num_epochs):
         t = trange(num_epochs)
         loss_history = []

@@ -63,11 +63,12 @@ class BananaMap(tfb.Bijector):
         
         return tf.math.log(tf.abs(self.a1*self.a3))*tf.ones([r.shape[0]])
     
-def BananaFlow(bMap):
+def BananaFlow(param_tuple):
     """TransformedDistribution with 2-D standard normal base
-    distribution and BanananaMap (or any map) for bijector"""
+    distribution and BanananaMap for bijector"""
+    bananaMap = BananaMap(param_tuple)
     bFlow = tfd.TransformedDistribution(
             distribution=tfd.MultivariateNormalDiag(
             loc=tf.zeros([2]),scale_diag=tf.ones([2])),
-            bijector=bMap)
+            bijector=bananaMap)
     return bFlow
