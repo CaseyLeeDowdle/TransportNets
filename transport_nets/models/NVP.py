@@ -1,4 +1,5 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+import tensorflow.compat.v2 as tf
 import tensorflow_probability as tfp
 import numpy as np
 import h5py
@@ -178,3 +179,18 @@ class NVP(tf.keras.models.Model):
             else:
                 setattr(self,key,None)
         f.close()
+
+# simplified version of Tensorflow Probability template
+def real_nvp_template(neuron_list,name=None):
+    with tf.name_scope(name or 'real_nvp_template'):
+          
+        def _fn(x,output_units,**condition_kwargs):
+            for neurons in neuron_list:
+                x = tf1.layers.dense(x,neurons)
+                x = tf.nn.relu(x)
+            x = tf1.layers.dense(x,2*output_units)
+            
+            shift, logscale = tf.split(x, 2, axis=-1)
+            return shift, logscale
+    
+    return tf1.make_template('real_nvp_template', _fn)

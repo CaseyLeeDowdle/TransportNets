@@ -103,7 +103,11 @@ class FFJORD(tf.keras.Model):
         super(FFJORD, self).compile()
         self.optimizer = optimizer
         self.loss_fn = self.loss_fns[loss_fn_name]
-
+    
+    # using custom fit function since the train_step function needed 
+    # for keras.model.fit() method would need to reference self.trainable_variables
+    # this creates two sets of identical variables unless its wrapped in a 
+    # tf1.make_template
     def fit_custom(self,dataset,num_epochs):
         t = trange(num_epochs)
         loss_history = []
