@@ -4,8 +4,7 @@ tfb = tfp.bijectors
 tfd = tfp.distributions
 
 __all__ = [
-    'BananaMap',
-    'BananaFlow'
+    'BananaMap'
 ]
 
 class BananaMap(tfb.Bijector):
@@ -62,13 +61,3 @@ class BananaMap(tfb.Bijector):
     def _forward_log_det_jacobian(self,r):
         
         return tf.math.log(tf.abs(self.a1*self.a3))*tf.ones([r.shape[0]])
-    
-def BananaFlow(param_tuple):
-    """TransformedDistribution with 2-D standard normal base
-    distribution and BanananaMap for bijector"""
-    bananaMap = BananaMap(param_tuple)
-    bFlow = tfd.TransformedDistribution(
-            distribution=tfd.MultivariateNormalDiag(
-            loc=tf.zeros([2]),scale_diag=tf.ones([2])),
-            bijector=bananaMap)
-    return bFlow
