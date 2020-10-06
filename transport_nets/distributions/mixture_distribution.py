@@ -2,6 +2,8 @@ from abc import abstractmethod
 import numpy as np
 import tensorflow as tf
 
+__all__ = ['MixtureDistribution']
+
 class Distribution:
     """ Base class for defining distributions. """
 
@@ -24,46 +26,6 @@ class Distribution:
             the density values.
         """
         return None
-
-
-class BananaDistribution(Distribution):
-
-    def __init__(self, a, b, offset=None):
-        super(BananaDistribution,self).__init__(2)
-
-        if(offset is None):
-            offset = np.zeros((2))
-
-        assert(len(offset)==2)
-
-        self.a = a
-        self.b = b
-        self.offset = offset
-
-
-    def GaussToTarget(self,r):
-        """ Transforms points in the Gaussian reference space to points in the
-            Banana target space.  Each row of r is a point.
-        """
-        x1_base = self.a*r[:,0:1]
-        x1 = x1_base + self.offset[0]
-        x2 = self.offset[1] + r[:,1:2]/self.a + self.b*x1_base*x1_base
-        return np.hstack([x1,x2])
-
-    def TargetToGauss(self,x):
-        """ Transforms points in the target space to the Gaussian reference space."""
-        xdiff = (x[:,0:1] - self.offset[0])
-        r1 = xdiff/self.a
-        r2 = self.a*(x[:,1:2] - self.offset[1] - self.b*xdiff*xdiff)
-        return np.hstack([r1,r2])
-
-    def Sample(self,N):
-        r = np.random.randn(N,2).astype('f')
-        return self.GaussToTarget(r)
-
-    def Density(self, x):
-        r = self.TargetToGauss(x)
-        return (0.5/np.pi) * np.exp(-0.5*np.sum(r*r,axis=1)).reshape(-1,1)
 
 
 class MixtureDistribution(Distribution):
