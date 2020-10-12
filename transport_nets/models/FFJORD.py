@@ -15,6 +15,9 @@ tfd = tfp.distributions
 # should also compare difference between keras and directly optimizing on flow in notebook
 # for the realNVP + FFJORD block triangular flow 
 
+__all__ = ['MLP_ODE',
+           'FFJORD']
+
 class MLP_ODE(tf.keras.Model):
     
     def __init__(self,output_dim, neuron_list,  name='mlp_ode'):
@@ -27,8 +30,7 @@ class MLP_ODE(tf.keras.Model):
             self._modules.append(layers.Activation('tanh'))
         self._modules.append(layers.Dense(self._output_dim))
         self._model = tf.keras.Sequential(self._modules)
-        
-    @tf.function     
+             
     def call(self, t, inputs):
         inputs = tf.concat([tf.broadcast_to(t, inputs.shape), inputs], -1)
         return self._model(inputs)  
@@ -48,18 +50,18 @@ class FFJORD(tf.keras.Model):
         
         self.loss_fns = dict({'nll' : self.negative_log_likelihood})
         self.loss_fn_names = dict({self.negative_log_likelihood : 'Negative Log Likelihood'})
-        
         bijectors = []
-        for _ in range(self.num_bijectors):
+        for i in range(self.num_bijectors):
             next_ffjord = tfb.FFJORD(
-                      state_time_derivative_fn=MLP_ODE(self.output_dim,self.neuron_list),
+                      state_time_derivative_fn= MLP_ODE(self.output_dim,self.neuron_list),
                       ode_solve_fn=self.ode_solve_fn,
                       trace_augmentation_fn=self.trace_augmentation_fn)
             bijectors.append(next_ffjord)
     
         self.bijector_chain = tfb.Chain(bijectors[::-1])
 
-        self.ref_dist = tfd.MultivariateNormalDiag(loc=tf.zeros([self.output_dim],tf.float32))
+        self.ref_dist = tfd.MultivariateNormalDiag(loc=tf.zeros(self.output_dim,tf.float32),
+                                                   scale_diag = tf.ones(self.output_dim,tf.float32))
 
         self.flow = tfd.TransformedDistribution(
                         distribution=self.ref_dist,
@@ -68,11 +70,11 @@ class FFJORD(tf.keras.Model):
 
 
     @tf.function
-    def train_step(self,target_sample,flow):
+    def train_step(self,target_sample):
         with tf.GradientTape() as tape:
             loss = self.loss_fn(target_sample)
-        gradients = tape.gradient(loss,flow.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients,flow.trainable_variables))
+        gradients = tape.gradient(loss,self.flow.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients,self.flow.trainable_variables))
         return loss
 
     @tf.function
@@ -113,7 +115,7 @@ class FFJORD(tf.keras.Model):
         loss_history = []
         for epoch in t:
             for batch in dataset:
-                loss = self.train_step(batch,self.flow)
+                loss = self.train_step(batch)
                 t.set_description("loss: %0.3f " % loss.numpy())
                 t.refresh()
             loss_history.append(loss.numpy())
