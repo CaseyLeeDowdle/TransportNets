@@ -57,6 +57,9 @@ class FFJORD(tf.keras.Model):
                       ode_solve_fn=self.ode_solve_fn,
                       trace_augmentation_fn=self.trace_augmentation_fn)
             bijectors.append(next_ffjord)
+            # batch norm
+            bn_bijector = tfb.BatchNormalization()
+            bijectors.append(bn_bijector)
     
         self.bijector_chain = tfb.Chain(bijectors[::-1])
 
@@ -101,6 +104,12 @@ class FFJORD(tf.keras.Model):
     def negative_log_likelihood(self, inputs):
         return -tf.reduce_mean(self.flow.log_prob(inputs))
     
+    def training_mode(self,training):
+        #training is bool
+        for i,bij in enumerate(self.bijector_chain.bijectors):
+            if bij.name == 'batch_normalization':
+                self.bijector_chain.bijectors[i].batchnorm.trainable = training
+    
     def compile(self, optimizer, loss_fn_name = 'nll'):
         super(FFJORD, self).compile()
         self.optimizer = optimizer
@@ -118,5 +127,5 @@ class FFJORD(tf.keras.Model):
                 loss = self.train_step(batch)
                 t.set_description("loss: %0.3f " % loss.numpy())
                 t.refresh()
-            loss_history.append(loss.numpy())
+                loss_history.append(loss.numpy())
         return loss_history

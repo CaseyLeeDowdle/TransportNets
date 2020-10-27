@@ -42,8 +42,7 @@ class NVP(tf.keras.models.Model):
             permutations_given = False
         else:
             permutations_given = True
-        self.bn_trainable_vars_gamma = []
-        self.bn_trainable_vars_beta = []
+        self.bn_trainable_vars = []
         self.loss_fns = dict({'nll' : self.negative_log_likelihood})
         self.loss_fn_names = dict({self.negative_log_likelihood : 
                                    'Negative Log Likelihood'})
@@ -81,8 +80,7 @@ class NVP(tf.keras.models.Model):
                 bn_bijector = tfb.BatchNormalization()
                 # need to do a forard pass to initialize training variables
                 _ = bn_bijector(tf.random.normal([1,self.output_dim]))
-                self.bn_trainable_vars_gamma.append(bn_bijector.trainable_variables[0])
-                self.bn_trainable_vars_beta.append(bn_bijector.trainable_variables[1])
+                self.bn_trainable_vars.append(bn_bijector.trainable_variables)
                 bijectors.append(bn_bijector)
 
 
@@ -125,7 +123,7 @@ class NVP(tf.keras.models.Model):
     def negative_log_likelihood(self, inputs):
         return -tf.reduce_mean(self.flow.log_prob(inputs))
 
-    def batch_norm_mode(self,training):
+    def training_mode(self,training):
         #training is bool
         for i,bij in enumerate(self.bijector_chain.bijectors):
             if bij.name == 'batch_normalization':
@@ -143,9 +141,6 @@ class NVP(tf.keras.models.Model):
             loss = self.loss_fn(x)
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-        self.add_metric(-tf.reduce_mean(self.flow.log_prob(x)), 
-                        aggregation = 'mean', name="test")
-        #loss_tracker.update_state(loss)
         return {self.loss_fn_names[self.loss_fn] : loss}
     
     def save_model(self,filename):
